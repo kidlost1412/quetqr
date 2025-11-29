@@ -495,7 +495,9 @@
       today: formatDate(new Date()),
       mode: 'scanner',
       filterDate: null,
-      allData: []              // Tất cả dữ liệu từ Firebase
+      allData: [],              // Tất cả dữ liệu từ Firebase
+      firebaseConnected: false,
+      localStorageKey: "tiktok_scanner_data"
     };
 
     // =============================================
@@ -566,6 +568,56 @@
     }
 
     // =============================================
+    // LOCALSTORAGE BACKUP FUNCTIONS
+    // =============================================
+    function saveToLocalStorage(data) {
+      try {
+        const existingData = JSON.parse(localStorage.getItem(state.localStorageKey) || '[]');
+        existingData.push({...data, timestamp: Date.now(), id: 'local_' + Date.now()});
+        localStorage.setItem(state.localStorageKey, JSON.stringify(existingData));
+        console.log('💾 Saved to localStorage:', data.code);
+        return true;
+      } catch (error) {
+        console.error('❌ localStorage save error:', error);
+        return false;
+      }
+    }
+
+    function getLocalStorageData() {
+      try {
+        return JSON.parse(localStorage.getItem(state.localStorageKey) || '[]');
+      } catch (error) {
+        console.error('❌ localStorage read error:', error);
+        return [];
+      }
+    }
+
+    function clearLocalStorageByDate(date) {
+      try {
+        const data = getLocalStorageData();
+        const filtered = data.filter(item => item.date !== date);
+        localStorage.setItem(state.localStorageKey, JSON.stringify(filtered));
+        return true;
+      } catch (error) {
+        console.error('❌ localStorage clear error:', error);
+        return false;
+      }
+    }
+
+    function mergeLocalStorageWithFirebase() {
+      const localData = getLocalStorageData();
+      const mergedData = [...state.allData];
+      
+      localData.forEach(localItem => {
+        if (!state.allData.find(item => item.code === localItem.code && item.date === localItem.date)) {
+          mergedData.push(localItem);
+        }
+      });
+      
+      return mergedData.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+    }
+
+    // =============================================
     // FIREBASE FUNCTIONS
     // =============================================
     function initFirebase() {
@@ -589,6 +641,10 @@
           // Sort theo timestamp mới nhất
           state.allData.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
 
+          // Merge với localStorage data
+          const mergedData = mergeLocalStorageWithFirebase();
+          state.allData = mergedData;
+
           // Rebuild cache cho ngày hôm nay
           state.cache.clear();
           state.stats = { total: 0, unique: 0, dup: 0 };
@@ -607,9 +663,17 @@
           if (state.mode === 'dashboard') {
             renderTable();
           }
+        }, (error) => {
+          console.error('❌ Firebase onValue error:', error);
+          state.firebaseConnected = false;
+          $('sync').className = 'sync error';
+          $('syncText').textContent = 'Lỗi đồng bộ';
+          
+          // Fallback to localStorage only
+          loadFromLocalStorageOnly();
         });
 
-        // Update sync status
+        state.firebaseConnected = true;
         $('sync').className = 'sync ok';
         $('syncText').textContent = 'Đã kết nối';
         console.log('✅ Firebase connected!');
@@ -617,45 +681,116 @@
 
       } catch (error) {
         console.error('❌ Firebase error:', error);
+        state.firebaseConnected = false;
         $('sync').className = 'sync error';
         $('syncText').textContent = 'Lỗi kết nối';
+        
+        // Fallback to localStorage only
+        loadFromLocalStorageOnly();
         return false;
       }
     }
 
-    async function saveScan(data) {
-      try {
-        // Kiểm tra đã tồn tại chưa
-        const existing = state.allData.find(
-          x => x.date === data.date && x.code === data.code
-        );
-
-        if (existing) {
-          // Update count
-          await update(ref(state.db, `scans/${existing.id}`), {
-            count: (existing.count || 1) + 1,
-            lastTime: data.time
-          });
-          return { isDuplicate: true, info: existing };
-        } else {
-          // Thêm mới
-          const newRef = push(state.dbRef);
-          await set(newRef, {
-            ...data,
-            timestamp: Date.now()
-          });
-          return { isDuplicate: false };
+    function loadFromLocalStorageOnly() {
+      console.log('📱 Loading from localStorage only...');
+      state.allData = getLocalStorageData();
+      
+      // Rebuild cache và stats
+      state.cache.clear();
+      state.stats = { total: 0, unique: 0, dup: 0 };
+      
+      state.allData.forEach(item => {
+        if (item.date === state.today) {
+          state.cache.set(item.code, item);
+          state.stats.unique++;
+          state.stats.total += item.count || 1;
+          state.stats.dup += (item.count || 1) - 1;
         }
-      } catch (error) {
-        console.error('Save error:', error);
-        return { isDuplicate: false, error };
+      });
+      
+      updateStats();
+      if (state.mode === 'dashboard') {
+        renderTable();
+      }
+    }
+
+    async function saveScan(data) {
+      console.log('💾 Attempting to save scan:', data);
+      
+      // Always save to localStorage first as backup
+      const localSaveSuccess = saveToLocalStorage(data);
+      
+      // Try Firebase if connected
+      if (state.firebaseConnected && state.db) {
+        try {
+          // Kiểm tra đã tồn tại chưa
+          const existing = state.allData.find(
+            x => x.date === data.date && x.code === data.code
+          );
+
+          if (existing && existing.id && !existing.id.startsWith('local_')) {
+            // Update count cho Firebase entry
+            await update(ref(state.db, `scans/${existing.id}`), {
+              count: (existing.count || 1) + 1,
+              lastTime: data.time
+            });
+            console.log('✅ Updated Firebase entry:', existing.id);
+            return { isDuplicate: true, info: existing, source: 'firebase' };
+          } else {
+            // Thêm mới vào Firebase
+            const newRef = push(state.dbRef);
+            await set(newRef, {
+              ...data,
+              timestamp: Date.now()
+            });
+            console.log('✅ Saved to Firebase:', newRef.key);
+            return { isDuplicate: false, source: 'firebase' };
+          }
+        } catch (error) {
+          console.error('❌ Firebase save failed, using localStorage:', error);
+          state.firebaseConnected = false;
+          $('sync').className = 'sync error';
+          $('syncText').textContent = 'Lỗi lưu';
+          return { isDuplicate: false, error, source: 'localStorage' };
+        }
+      } else {
+        console.log('📱 Firebase not connected, using localStorage only');
+        return { isDuplicate: false, source: 'localStorage' };
       }
     }
 
     async function clearByDate(date) {
-      const items = state.allData.filter(d => d.date === date);
-      for (const item of items) {
-        await remove(ref(state.db, `scans/${item.id}`));
+      try {
+        // Clear from Firebase
+        if (state.firebaseConnected && state.db) {
+          const firebaseItems = state.allData.filter(d => d.date === date && d.id && !d.id.startsWith('local_'));
+          for (const item of firebaseItems) {
+            await remove(ref(state.db, `scans/${item.id}`));
+          }
+          console.log(`✅ Cleared ${firebaseItems.length} Firebase items for date ${date}`);
+        }
+
+        // Clear from localStorage
+        const localClearSuccess = clearLocalStorageByDate(date);
+        if (localClearSuccess) {
+          console.log(`✅ Cleared localStorage for date ${date}`);
+        }
+
+        // Update local state
+        state.allData = state.allData.filter(d => d.date !== date);
+        
+        // Rebuild cache and stats if clearing today
+        if (date === state.today) {
+          state.cache.clear();
+          state.stats = { total: 0, unique: 0, dup: 0 };
+        }
+        
+        updateStats();
+        renderTable();
+        
+      } catch (error) {
+        console.error('❌ Clear data error:', error);
+        alert('Lỗi xóa dữ liệu: ' + error.message);
       }
     }
 
@@ -728,6 +863,7 @@
         return;
       }
 
+      console.log('🔍 Handling scan:', code);
       state.lastCode = code;
       state.lastTime = now;
       state.scanning = false;
@@ -744,23 +880,48 @@
       flash(isDup);
       isDup ? playDuplicate() : playSuccess();
 
-      // Update status
-      setStatus(
-        isDup ? 'dup' : 'ok',
-        isDup ? '⚠️ MÃ TRÙNG!' : '✅ Đã lưu thành công!'
-      );
-
-      // Show result
+      // Show result immediately
       showResult(code, isDup, dupInfo || { time, position, count: 1 });
 
-      // Save to Firebase
-      await saveScan({ code, date, time, position, count: 1 });
+      try {
+        // Save scan
+        const saveResult = await saveScan({ code, date, time, position, count: 1 });
+        
+        // Update status based on save result
+        if (saveResult.error) {
+          setStatus('error', '⚠️ Lỗi lưu! Đã backup local');
+        } else if (isDup) {
+          setStatus('dup', '⚠️ MÃ TRÙNG!');
+        } else {
+          const source = saveResult.source === 'firebase' ? 'Firebase' : 'Local';
+          setStatus('ok', `✅ Đã lưu (${source})!`);
+        }
+        
+        // Update cache if new
+        if (!isDup) {
+          state.cache.set(code, { code, date, time, position, count: 1 });
+          state.stats.unique++;
+          state.stats.total++;
+          updateStats();
+        } else if (dupInfo) {
+          // Update duplicate count
+          dupInfo.count = (dupInfo.count || 1) + 1;
+          state.cache.set(code, dupInfo);
+          state.stats.total++;
+          state.stats.dup++;
+          updateStats();
+        }
+        
+      } catch (error) {
+        console.error('❌ Handle scan error:', error);
+        setStatus('error', '❌ Lỗi xử lý scan!');
+      }
 
-      // Resume scanning after 2s
+      // Resume scanning after 3s to allow user to see status
       setTimeout(() => {
         state.scanning = true;
         setStatus('', '📷 Sẵn sàng quét');
-      }, 2000);
+      }, 3000);
     }
 
     // =============================================
