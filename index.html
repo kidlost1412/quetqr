@@ -3,74 +3,105 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>⚡ TikTok Barcode Scanner</title>
+  <title>📦 TikTok Scanner - Firebase Sync</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📦</text></svg>">
   <style>
     :root {
       --primary: #fe2c55;
       --success: #00c853;
       --warning: #ff9800;
+      --error: #f44336;
       --bg: #000;
       --card: #111;
-      --card2: #1a1a1a;
       --text: #fff;
-      --text2: #666;
-      --border: #222;
+      --text2: #888;
+      --border: #333;
     }
-    
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       background: var(--bg);
       color: var(--text);
       min-height: 100vh;
       min-height: 100dvh;
-      user-select: none;
-      -webkit-user-select: none;
     }
     
     /* Header */
     .header {
-      position: sticky;
-      top: 0;
-      z-index: 100;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 10px 12px;
-      background: rgba(0,0,0,0.9);
-      backdrop-filter: blur(10px);
+      padding: 12px;
+      background: var(--card);
       border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 100;
     }
-    
     .logo { font-weight: 700; font-size: 1rem; }
     .logo span { color: var(--primary); }
-    
-    .engine {
-      font-size: 0.6rem;
-      padding: 4px 8px;
-      background: var(--card);
-      border: 1px solid var(--success);
-      border-radius: 10px;
-      color: var(--success);
+    .sync {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.7rem;
+      padding: 4px 10px;
+      background: #1a1a1a;
+      border-radius: 12px;
     }
+    .sync-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--warning);
+      animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+    .sync.ok .sync-dot { background: var(--success); animation: none; }
+    .sync.error .sync-dot { background: var(--error); animation: none; }
+    
+    /* Tabs */
+    .tabs {
+      display: flex;
+      background: var(--card);
+      padding: 8px;
+      gap: 8px;
+    }
+    .tab {
+      flex: 1;
+      padding: 12px;
+      border: none;
+      border-radius: 10px;
+      background: transparent;
+      color: var(--text2);
+      font-weight: 600;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .tab.active {
+      background: var(--primary);
+      color: #fff;
+    }
+    
+    /* Section */
+    .section { display: none; }
+    .section.active { display: block; }
     
     /* Scanner */
     .scanner {
       position: relative;
       width: 100%;
       aspect-ratio: 1;
+      max-height: 50vh;
       background: #000;
       overflow: hidden;
     }
-    
     #video {
       width: 100%;
       height: 100%;
       object-fit: cover;
     }
-    
     .overlay {
       position: absolute;
       inset: 0;
@@ -79,580 +110,442 @@
       justify-content: center;
       pointer-events: none;
     }
-    
     .frame {
       width: 72%;
       height: 72%;
       border: 2px solid var(--primary);
       border-radius: 12px;
-      position: relative;
       box-shadow: 0 0 0 9999px rgba(0,0,0,0.5);
+      position: relative;
     }
-    
     .laser {
       position: absolute;
-      left: 8%; right: 8%;
+      left: 8%;
+      right: 8%;
       height: 2px;
-      background: var(--primary);
-      box-shadow: 0 0 8px var(--primary);
+      background: linear-gradient(90deg, transparent, var(--primary), transparent);
+      box-shadow: 0 0 10px var(--primary);
       animation: scan 1.8s ease-in-out infinite;
     }
-    
-    @keyframes scan {
-      0%, 100% { top: 8%; }
-      50% { top: 92%; }
-    }
-    
+    @keyframes scan { 0%, 100% { top: 8%; } 50% { top: 92%; } }
     .flash {
       position: absolute;
       inset: 0;
-      background: var(--success);
       opacity: 0;
-      transition: opacity 0.1s;
       pointer-events: none;
+      transition: opacity 0.1s;
     }
-    
-    .flash.on { opacity: 0.25; }
-    .flash.dup { background: var(--warning); }
-    
-    .perf {
-      position: absolute;
-      bottom: 6px;
-      left: 6px;
-      font: 500 0.55rem/1 monospace;
-      color: rgba(255,255,255,0.6);
-      background: rgba(0,0,0,0.5);
-      padding: 3px 6px;
-      border-radius: 4px;
-    }
+    .flash.green { background: var(--success); opacity: 0.3; }
+    .flash.yellow { background: var(--warning); opacity: 0.3; }
     
     /* Status */
     .status {
-      padding: 10px;
+      padding: 14px;
       text-align: center;
-      font-size: 0.85rem;
+      font-size: 0.95rem;
+      font-weight: 500;
       background: var(--card);
       border-bottom: 1px solid var(--border);
     }
-    
     .status.ok { background: rgba(0,200,83,0.12); color: var(--success); }
     .status.dup { background: rgba(255,152,0,0.12); color: var(--warning); }
+    .status.error { background: rgba(244,67,54,0.12); color: var(--error); }
     
     /* Result */
     .result {
       display: none;
-      margin: 10px;
+      margin: 12px;
       padding: 14px;
       background: var(--card);
-      border-radius: 10px;
-      border-left: 3px solid var(--success);
+      border-radius: 12px;
+      border-left: 4px solid var(--success);
+      animation: slideIn 0.3s ease;
     }
-    
-    .result.show { display: block; animation: pop 0.25s ease; }
+    @keyframes slideIn { from { opacity: 0; transform: translateY(-10px); } }
+    .result.show { display: block; }
     .result.dup { border-color: var(--warning); }
-    
-    @keyframes pop {
-      from { opacity: 0; transform: scale(0.95); }
-      to { opacity: 1; transform: scale(1); }
-    }
-    
-    .result-top {
+    .result-head {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 6px;
+      margin-bottom: 8px;
     }
-    
     .badge {
-      font-size: 0.65rem;
-      font-weight: 600;
-      padding: 3px 8px;
+      font-size: 0.7rem;
+      padding: 4px 10px;
       background: var(--success);
       color: #fff;
       border-radius: 8px;
+      font-weight: 600;
     }
-    
     .result.dup .badge { background: var(--warning); }
-    
-    .result-time { font-size: 0.7rem; color: var(--text2); }
-    
+    .result-time { font-size: 0.75rem; color: var(--text2); }
     .result-code {
-      font: 600 1rem/1.3 'SF Mono', 'Consolas', monospace;
+      font-family: 'SF Mono', 'Consolas', monospace;
+      font-size: 1.1rem;
+      font-weight: 600;
       word-break: break-all;
+      line-height: 1.4;
     }
-    
-    .dup-info {
+    .dup-detail {
       display: none;
-      margin-top: 10px;
-      padding: 10px;
+      margin-top: 12px;
+      padding: 12px;
       background: rgba(255,152,0,0.08);
       border-radius: 8px;
-      font-size: 0.8rem;
+      font-size: 0.85rem;
     }
-    
-    .result.dup .dup-info { display: block; }
-    
+    .result.dup .dup-detail { display: block; }
     .dup-row {
       display: flex;
       justify-content: space-between;
-      padding: 4px 0;
+      padding: 5px 0;
     }
-    
     .dup-label { color: var(--text2); }
-    .dup-val { font-weight: 600; }
+    .dup-val { font-weight: 600; color: var(--warning); }
     
     /* Stats */
     .stats {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 8px;
-      padding: 10px;
+      gap: 10px;
+      padding: 12px;
     }
-    
     .stat {
       background: var(--card);
-      padding: 12px 8px;
-      border-radius: 10px;
+      padding: 16px 10px;
+      border-radius: 12px;
       text-align: center;
     }
-    
     .stat-num {
-      font-size: 1.5rem;
+      font-size: 1.8rem;
       font-weight: 700;
       color: var(--primary);
     }
-    
     .stat-label {
-      font-size: 0.6rem;
+      font-size: 0.65rem;
       color: var(--text2);
       text-transform: uppercase;
-      margin-top: 2px;
+      margin-top: 4px;
     }
     
-    /* Actions */
+    /* Dashboard */
+    .dashboard { padding: 12px; }
     .actions {
       display: flex;
-      gap: 8px;
-      padding: 0 10px 10px;
+      gap: 10px;
+      margin-bottom: 12px;
     }
-    
     .btn {
       flex: 1;
-      padding: 12px;
+      padding: 14px;
       border: none;
       border-radius: 10px;
-      font-size: 0.85rem;
       font-weight: 600;
+      font-size: 0.9rem;
       cursor: pointer;
+      transition: transform 0.1s, opacity 0.1s;
+    }
+    .btn:active { transform: scale(0.98); opacity: 0.9; }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-secondary { background: var(--card); color: var(--text); border: 1px solid var(--border); }
+    .btn-danger { background: var(--error); color: #fff; }
+    .filter {
       display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
+      gap: 10px;
+      margin-bottom: 12px;
     }
-    
-    .btn-primary {
-      background: var(--primary);
-      color: #fff;
-    }
-    
-    .btn-secondary {
-      background: var(--card2);
-      color: var(--text);
-      border: 1px solid var(--border);
-    }
-    
-    /* History */
-    .section-title {
-      padding: 10px;
-      font-size: 0.75rem;
-      color: var(--text2);
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-    
-    .history {
+    .filter input {
+      flex: 1;
+      padding: 12px;
       background: var(--card);
-      margin: 0 10px 80px;
+      border: 1px solid var(--border);
       border-radius: 10px;
-      max-height: 280px;
+      color: var(--text);
+      font-size: 0.9rem;
+    }
+    .filter input:focus { outline: none; border-color: var(--primary); }
+    
+    /* Table */
+    .table-wrap {
+      background: var(--card);
+      border-radius: 12px;
+      max-height: 50vh;
       overflow-y: auto;
     }
-    
-    .history::-webkit-scrollbar { width: 3px; }
-    .history::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
-    
-    .history-empty {
-      padding: 30px;
-      text-align: center;
-      color: var(--text2);
-      font-size: 0.8rem;
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
     }
-    
-    .h-item {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 10px 12px;
-      border-bottom: 1px solid var(--border);
-    }
-    
-    .h-item:last-child { border: none; }
-    
-    .h-num {
-      width: 22px; height: 22px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+    th {
+      position: sticky;
+      top: 0;
       background: var(--primary);
       color: #fff;
-      border-radius: 50%;
-      font-size: 0.6rem;
-      font-weight: 700;
-      flex-shrink: 0;
+      padding: 12px 10px;
+      text-align: left;
+      font-size: 0.75rem;
+      text-transform: uppercase;
     }
-    
-    .h-content { flex: 1; min-width: 0; }
-    
-    .h-code {
-      font: 500 0.8rem/1.2 monospace;
-      white-space: nowrap;
+    td {
+      padding: 12px 10px;
+      border-bottom: 1px solid var(--border);
+    }
+    .code-cell {
+      font-family: monospace;
+      max-width: 150px;
       overflow: hidden;
       text-overflow: ellipsis;
+      white-space: nowrap;
     }
-    
-    .h-time {
-      font-size: 0.65rem;
+    .cnt {
+      display: inline-block;
+      padding: 3px 10px;
+      background: #222;
+      border-radius: 10px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .cnt.multi { background: rgba(255,152,0,0.2); color: var(--warning); }
+    .empty {
+      padding: 40px;
+      text-align: center;
       color: var(--text2);
     }
     
-    .h-count {
-      font-size: 0.65rem;
-      padding: 2px 7px;
-      background: var(--bg);
-      border-radius: 8px;
-      color: var(--text2);
-    }
-    
-    .h-count.multi { background: rgba(255,152,0,0.15); color: var(--warning); }
-    
-    /* Date selector */
-    .date-bar {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 0 10px;
-      margin-bottom: 6px;
-    }
-    
-    .date-input {
-      flex: 1;
-      padding: 8px 10px;
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      color: var(--text);
-      font-size: 0.8rem;
-    }
-    
-    .date-input:focus { outline: none; border-color: var(--primary); }
-    
-    /* Modal */
-    .modal {
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.85);
+    /* Real-time badge */
+    .rt-badge {
       display: flex;
       align-items: center;
       justify-content: center;
-      z-index: 200;
-      opacity: 0;
-      visibility: hidden;
-      transition: all 0.2s;
-      padding: 16px;
+      gap: 8px;
+      margin-top: 14px;
+      font-size: 0.7rem;
+      color: var(--success);
+      font-weight: 500;
     }
-    
-    .modal.show { opacity: 1; visibility: visible; }
-    
-    .modal-box {
-      width: 100%;
-      max-width: 360px;
-      background: var(--card);
-      border-radius: 16px;
-      padding: 20px;
-      transform: scale(0.9);
-      transition: transform 0.2s;
+    .rt-badge::before {
+      content: '';
+      width: 6px;
+      height: 6px;
+      background: var(--success);
+      border-radius: 50%;
+      animation: blink 1.5s infinite;
     }
-    
-    .modal.show .modal-box { transform: scale(1); }
-    
-    .modal-title {
-      font-size: 1rem;
-      font-weight: 600;
-      margin-bottom: 16px;
-      text-align: center;
-    }
-    
-    .modal-info {
-      font-size: 0.8rem;
-      color: var(--text2);
-      text-align: center;
-      margin-bottom: 16px;
-    }
-    
-    .modal-actions {
-      display: flex;
-      gap: 10px;
-    }
+    @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
   </style>
 </head>
 <body>
   <!-- Header -->
   <header class="header">
     <div class="logo">📦 <span>TikTok</span> Scanner</div>
-    <div class="engine" id="engine">Đang khởi động...</div>
+    <div class="sync" id="sync">
+      <div class="sync-dot"></div>
+      <span id="syncText">Đang kết nối...</span>
+    </div>
   </header>
   
-  <!-- Scanner -->
-  <section class="scanner">
-    <video id="video" autoplay playsinline muted></video>
-    <canvas id="canvas" style="display:none"></canvas>
-    <div class="overlay">
-      <div class="frame">
-        <div class="laser"></div>
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab active" data-tab="scanner">📱 Quét mã</button>
+    <button class="tab" data-tab="dashboard">💻 Dashboard</button>
+  </div>
+  
+  <!-- Scanner Section -->
+  <section class="section active" id="scannerSection">
+    <div class="scanner">
+      <video id="video" autoplay playsinline muted></video>
+      <canvas id="canvas" style="display:none"></canvas>
+      <div class="overlay">
+        <div class="frame">
+          <div class="laser"></div>
+        </div>
+      </div>
+      <div class="flash" id="flash"></div>
+    </div>
+    
+    <div class="status" id="status">📷 Đang khởi động...</div>
+    
+    <div class="result" id="result">
+      <div class="result-head">
+        <span class="badge" id="badge">✅ MỚI</span>
+        <span class="result-time" id="rTime">--:--:--</span>
+      </div>
+      <div class="result-code" id="rCode">-</div>
+      <div class="dup-detail">
+        <div class="dup-row">
+          <span class="dup-label">Lần đầu quét:</span>
+          <span class="dup-val" id="dTime">-</span>
+        </div>
+        <div class="dup-row">
+          <span class="dup-label">Vị trí:</span>
+          <span class="dup-val" id="dPos">-</span>
+        </div>
+        <div class="dup-row">
+          <span class="dup-label">Số lần quét:</span>
+          <span class="dup-val" id="dCount">-</span>
+        </div>
       </div>
     </div>
-    <div class="flash" id="flash"></div>
-    <div class="perf" id="perf">-- FPS | -- ms</div>
+    
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-num" id="sTotal">0</div>
+        <div class="stat-label">Tổng quét</div>
+      </div>
+      <div class="stat">
+        <div class="stat-num" id="sUnique">0</div>
+        <div class="stat-label">Duy nhất</div>
+      </div>
+      <div class="stat">
+        <div class="stat-num" id="sDup">0</div>
+        <div class="stat-label">Trùng</div>
+      </div>
+    </div>
   </section>
   
-  <!-- Status -->
-  <div class="status" id="status">📷 Đang khởi động camera...</div>
-  
-  <!-- Result -->
-  <div class="result" id="result">
-    <div class="result-top">
-      <span class="badge" id="badge">✅ MỚI</span>
-      <span class="result-time" id="rTime">--:--:--</span>
-    </div>
-    <div class="result-code" id="rCode">-</div>
-    <div class="dup-info">
-      <div class="dup-row">
-        <span class="dup-label">Lần đầu:</span>
-        <span class="dup-val" id="dTime">-</span>
+  <!-- Dashboard Section -->
+  <section class="section dashboard" id="dashboardSection">
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-num" id="dTotal">0</div>
+        <div class="stat-label">Tổng quét</div>
       </div>
-      <div class="dup-row">
-        <span class="dup-label">Vị trí:</span>
-        <span class="dup-val" id="dPos">-</span>
+      <div class="stat">
+        <div class="stat-num" id="dUnique">0</div>
+        <div class="stat-label">Duy nhất</div>
       </div>
-      <div class="dup-row">
-        <span class="dup-label">Số lần:</span>
-        <span class="dup-val" id="dCount">-</span>
+      <div class="stat">
+        <div class="stat-num" id="dDup">0</div>
+        <div class="stat-label">Trùng</div>
       </div>
     </div>
-  </div>
-  
-  <!-- Stats -->
-  <div class="stats">
-    <div class="stat">
-      <div class="stat-num" id="sTotal">0</div>
-      <div class="stat-label">Tổng</div>
+    
+    <div class="actions">
+      <button class="btn btn-primary" id="btnExport">📥 Xuất Excel</button>
+      <button class="btn btn-danger" id="btnClear">🗑️ Xóa dữ liệu</button>
     </div>
-    <div class="stat">
-      <div class="stat-num" id="sUnique">0</div>
-      <div class="stat-label">Duy nhất</div>
+    
+    <div class="filter">
+      <input type="date" id="dateFilter">
+      <button class="btn btn-secondary" id="btnToday">Hôm nay</button>
     </div>
-    <div class="stat">
-      <div class="stat-num" id="sDup">0</div>
-      <div class="stat-label">Trùng</div>
+    
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>STT</th>
+            <th>Giờ</th>
+            <th>Mã vạch</th>
+            <th>Lần</th>
+          </tr>
+        </thead>
+        <tbody id="tbody">
+          <tr><td colspan="4" class="empty">Đang tải dữ liệu...</td></tr>
+        </tbody>
+      </table>
     </div>
-  </div>
-  
-  <!-- Actions -->
-  <div class="actions">
-    <button class="btn btn-primary" id="btnExport">📥 Xuất Excel</button>
-    <button class="btn btn-secondary" id="btnClear">🗑️ Xóa hôm nay</button>
-  </div>
-  
-  <!-- History -->
-  <div class="section-title">📜 Lịch sử quét</div>
-  <div class="date-bar">
-    <input type="date" class="date-input" id="dateInput">
-  </div>
-  <div class="history" id="history">
-    <div class="history-empty">Chưa có mã nào</div>
-  </div>
-  
-  <!-- Export Modal -->
-  <div class="modal" id="modalExport">
-    <div class="modal-box">
-      <div class="modal-title">📥 Xuất dữ liệu Excel</div>
-      <div class="modal-info">Chọn ngày để xuất hoặc xuất tất cả</div>
-      <div class="date-bar" style="margin-bottom:12px">
-        <input type="date" class="date-input" id="exportDate">
-      </div>
-      <div class="modal-actions">
-        <button class="btn btn-secondary" id="btnExportDay">📅 Ngày này</button>
-        <button class="btn btn-primary" id="btnExportAll">📦 Tất cả</button>
-      </div>
-      <button class="btn btn-secondary" style="margin-top:10px;width:100%" id="btnCloseExport">Đóng</button>
-    </div>
-  </div>
-  
-  <!-- Clear Modal -->
-  <div class="modal" id="modalClear">
-    <div class="modal-box">
-      <div class="modal-title">🗑️ Xóa dữ liệu?</div>
-      <div class="modal-info">Xóa toàn bộ dữ liệu ngày <strong id="clearDate">--</strong>?</div>
-      <div class="modal-actions">
-        <button class="btn btn-secondary" id="btnCancelClear">Hủy</button>
-        <button class="btn btn-primary" style="background:#f44336" id="btnConfirmClear">Xóa</button>
-      </div>
-    </div>
-  </div>
+    
+    <div class="rt-badge">🔥 FIREBASE REAL-TIME SYNC</div>
+  </section>
 
-  <!-- SheetJS for Excel export -->
-  <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
-  
-  <script>
-    /**
-     * ⚡ TIKTOK BARCODE SCANNER - OFFLINE EDITION
-     * 
-     * Features:
-     * - BarcodeDetector Native API (GPU accelerated)
-     * - IndexedDB for persistent storage
-     * - Export to Excel (SheetJS)
-     * - Zero network dependency
-     */
-    
-    // ============================================
-    // CONFIG
-    // ============================================
-    const CONFIG = {
-      DB_NAME: 'TikTokScanner',
-      DB_VERSION: 1,
-      STORE_NAME: 'scans',
-      COOLDOWN: 2000,
-      SCAN_INTERVAL: 80
+  <!-- Firebase SDK -->
+  <script type="module">
+    // =============================================
+    // FIREBASE IMPORTS
+    // =============================================
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
+    import { 
+      getDatabase, 
+      ref, 
+      push, 
+      set, 
+      update, 
+      onValue, 
+      remove 
+    } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-database.js";
+
+    // =============================================
+    // FIREBASE CONFIG - CỦA BẠN
+    // =============================================
+    const firebaseConfig = {
+      apiKey: "AIzaSyAf4o0rgqtUmdi1Bfmm36TsIz7N7yo64hY",
+      authDomain: "tiktok-scanner.firebaseapp.com",
+      projectId: "tiktok-scanner",
+      storageBucket: "tiktok-scanner.firebasestorage.app",
+      messagingSenderId: "709634331362",
+      appId: "1:709634331362:web:c7d73468a36fd012bc44bb",
+      databaseURL: "https://tiktok-scanner-default-rtdb.asia-southeast1.firebasedatabase.app"
     };
-    
-    // ============================================
+
+    // =============================================
     // STATE
-    // ============================================
+    // =============================================
     const state = {
       db: null,
+      dbRef: null,
       detector: null,
       scanning: true,
       lastCode: null,
       lastTime: 0,
-      todayCache: new Map(),
+      cache: new Map(),        // Cache mã đã quét hôm nay
       stats: { total: 0, unique: 0, dup: 0 },
-      currentDate: formatDate(new Date()),
-      fps: 0,
-      frameCount: 0,
-      lastFpsTime: Date.now(),
-      scanTimes: []
+      today: formatDate(new Date()),
+      mode: 'scanner',
+      filterDate: null,
+      allData: []              // Tất cả dữ liệu từ Firebase
     };
-    
-    // ============================================
-    // DOM
-    // ============================================
+
+    // =============================================
+    // DOM HELPERS
+    // =============================================
     const $ = id => document.getElementById(id);
     const video = $('video');
     const canvas = $('canvas');
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
-    
-    // ============================================
-    // INDEXED DB
-    // ============================================
-    function initDB() {
-      return new Promise((resolve, reject) => {
-        const req = indexedDB.open(CONFIG.DB_NAME, CONFIG.DB_VERSION);
-        
-        req.onerror = () => reject(req.error);
-        
-        req.onsuccess = () => {
-          state.db = req.result;
-          resolve();
-        };
-        
-        req.onupgradeneeded = (e) => {
-          const db = e.target.result;
-          if (!db.objectStoreNames.contains(CONFIG.STORE_NAME)) {
-            const store = db.createObjectStore(CONFIG.STORE_NAME, { keyPath: 'id', autoIncrement: true });
-            store.createIndex('date', 'date', { unique: false });
-            store.createIndex('code', 'code', { unique: false });
-            store.createIndex('dateCode', ['date', 'code'], { unique: false });
-          }
-        };
+
+    // =============================================
+    // UTILITY FUNCTIONS
+    // =============================================
+    function formatTime() {
+      return new Date().toLocaleTimeString('vi-VN', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
       });
     }
-    
-    async function saveScan(data) {
-      return new Promise((resolve, reject) => {
-        const tx = state.db.transaction(CONFIG.STORE_NAME, 'readwrite');
-        const store = tx.objectStore(CONFIG.STORE_NAME);
-        const req = store.add(data);
-        req.onsuccess = () => resolve(req.result);
-        req.onerror = () => reject(req.error);
-      });
+
+    function formatDate(d) {
+      const day = String(d.getDate()).padStart(2, '0');
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const year = d.getFullYear();
+      return `${day}-${month}-${year}`;
     }
-    
-    async function updateScan(id, data) {
-      return new Promise((resolve, reject) => {
-        const tx = state.db.transaction(CONFIG.STORE_NAME, 'readwrite');
-        const store = tx.objectStore(CONFIG.STORE_NAME);
-        const req = store.put({ ...data, id });
-        req.onsuccess = () => resolve();
-        req.onerror = () => reject(req.error);
-      });
+
+    function toInputDate(str) {
+      const [d, m, y] = str.split('-');
+      return `${y}-${m}-${d}`;
     }
-    
-    async function getScansByDate(date) {
-      return new Promise((resolve, reject) => {
-        const tx = state.db.transaction(CONFIG.STORE_NAME, 'readonly');
-        const store = tx.objectStore(CONFIG.STORE_NAME);
-        const index = store.index('date');
-        const req = index.getAll(date);
-        req.onsuccess = () => resolve(req.result);
-        req.onerror = () => reject(req.error);
-      });
+
+    function fromInputDate(str) {
+      const [y, m, d] = str.split('-');
+      return `${d}-${m}-${y}`;
     }
-    
-    async function getAllScans() {
-      return new Promise((resolve, reject) => {
-        const tx = state.db.transaction(CONFIG.STORE_NAME, 'readonly');
-        const store = tx.objectStore(CONFIG.STORE_NAME);
-        const req = store.getAll();
-        req.onsuccess = () => resolve(req.result);
-        req.onerror = () => reject(req.error);
-      });
+
+    function escapeHtml(str) {
+      return String(str).replace(/[<>&"']/g, c => ({
+        '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&#39;'
+      }[c]));
     }
-    
-    async function clearByDate(date) {
-      const scans = await getScansByDate(date);
-      const tx = state.db.transaction(CONFIG.STORE_NAME, 'readwrite');
-      const store = tx.objectStore(CONFIG.STORE_NAME);
-      for (const scan of scans) {
-        store.delete(scan.id);
-      }
-      return new Promise(resolve => tx.oncomplete = resolve);
-    }
-    
-    async function getAllDates() {
-      const all = await getAllScans();
-      const dates = [...new Set(all.map(s => s.date))];
-      return dates.sort().reverse();
-    }
-    
-    // ============================================
+
+    // =============================================
     // AUDIO
-    // ============================================
+    // =============================================
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     
-    function beep(freq, dur) {
+    function beep(freq, duration) {
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
       osc.connect(gain);
@@ -660,421 +553,402 @@
       osc.frequency.value = freq;
       gain.gain.value = 0.25;
       osc.start();
-      setTimeout(() => osc.stop(), dur);
+      setTimeout(() => osc.stop(), duration);
     }
-    
-    function playOk() { beep(1800, 60); setTimeout(() => beep(2400, 60), 80); }
-    function playDup() { beep(350, 200); }
-    
-    // ============================================
-    // SCANNER
-    // ============================================
+
+    function playSuccess() {
+      beep(1800, 60);
+      setTimeout(() => beep(2400, 60), 80);
+    }
+
+    function playDuplicate() {
+      beep(350, 200);
+    }
+
+    // =============================================
+    // FIREBASE FUNCTIONS
+    // =============================================
+    function initFirebase() {
+      try {
+        console.log('🔥 Initializing Firebase...');
+        const app = initializeApp(firebaseConfig);
+        state.db = getDatabase(app);
+        state.dbRef = ref(state.db, 'scans');
+
+        // Lắng nghe real-time updates
+        onValue(state.dbRef, (snapshot) => {
+          console.log('📡 Firebase data received');
+          const data = snapshot.val() || {};
+          
+          // Chuyển object thành array
+          state.allData = Object.entries(data).map(([id, value]) => ({
+            id,
+            ...value
+          }));
+
+          // Sort theo timestamp mới nhất
+          state.allData.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+
+          // Rebuild cache cho ngày hôm nay
+          state.cache.clear();
+          state.stats = { total: 0, unique: 0, dup: 0 };
+
+          state.allData.forEach(item => {
+            if (item.date === state.today) {
+              state.cache.set(item.code, item);
+              state.stats.unique++;
+              state.stats.total += item.count || 1;
+              state.stats.dup += (item.count || 1) - 1;
+            }
+          });
+
+          // Update UI
+          updateStats();
+          if (state.mode === 'dashboard') {
+            renderTable();
+          }
+        });
+
+        // Update sync status
+        $('sync').className = 'sync ok';
+        $('syncText').textContent = 'Đã kết nối';
+        console.log('✅ Firebase connected!');
+        return true;
+
+      } catch (error) {
+        console.error('❌ Firebase error:', error);
+        $('sync').className = 'sync error';
+        $('syncText').textContent = 'Lỗi kết nối';
+        return false;
+      }
+    }
+
+    async function saveScan(data) {
+      try {
+        // Kiểm tra đã tồn tại chưa
+        const existing = state.allData.find(
+          x => x.date === data.date && x.code === data.code
+        );
+
+        if (existing) {
+          // Update count
+          await update(ref(state.db, `scans/${existing.id}`), {
+            count: (existing.count || 1) + 1,
+            lastTime: data.time
+          });
+          return { isDuplicate: true, info: existing };
+        } else {
+          // Thêm mới
+          const newRef = push(state.dbRef);
+          await set(newRef, {
+            ...data,
+            timestamp: Date.now()
+          });
+          return { isDuplicate: false };
+        }
+      } catch (error) {
+        console.error('Save error:', error);
+        return { isDuplicate: false, error };
+      }
+    }
+
+    async function clearByDate(date) {
+      const items = state.allData.filter(d => d.date === date);
+      for (const item of items) {
+        await remove(ref(state.db, `scans/${item.id}`));
+      }
+    }
+
+    // =============================================
+    // SCANNER FUNCTIONS
+    // =============================================
     async function initScanner() {
       if (!('BarcodeDetector' in window)) {
-        $('engine').textContent = '❌ Không hỗ trợ';
-        $('status').textContent = '❌ Trình duyệt không hỗ trợ BarcodeDetector';
+        setStatus('error', '❌ Trình duyệt không hỗ trợ BarcodeDetector');
         return false;
       }
-      
+
       try {
         const formats = await BarcodeDetector.getSupportedFormats();
-        state.detector = new BarcodeDetector({
-          formats: ['qr_code', 'code_128', 'code_39', 'ean_13', 'ean_8', 'upc_a', 'upc_e']
-            .filter(f => formats.includes(f))
-        });
-        $('engine').textContent = '⚡ Native GPU';
+        const supportedFormats = ['qr_code', 'code_128', 'code_39', 'ean_13', 'ean_8', 'upc_a', 'upc_e']
+          .filter(f => formats.includes(f));
+
+        state.detector = new BarcodeDetector({ formats: supportedFormats });
+        console.log('📷 Scanner ready, formats:', supportedFormats);
         return true;
-      } catch (e) {
-        $('engine').textContent = '❌ Lỗi';
+      } catch (error) {
+        setStatus('error', '❌ Lỗi khởi tạo scanner');
         return false;
       }
     }
-    
+
     async function initCamera() {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+          video: {
+            facingMode: 'environment',
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          }
         });
+
         video.srcObject = stream;
         await video.play();
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
+        console.log('📹 Camera ready:', video.videoWidth, 'x', video.videoHeight);
         return true;
-      } catch (e) {
-        $('status').textContent = '❌ Lỗi camera: ' + e.message;
+      } catch (error) {
+        setStatus('error', '❌ Lỗi camera: ' + error.message);
         return false;
       }
     }
-    
+
     function startScanLoop() {
       const scan = async () => {
-        if (!state.scanning) {
-          setTimeout(scan, CONFIG.SCAN_INTERVAL);
-          return;
+        if (state.scanning && state.mode === 'scanner') {
+          try {
+            ctx.drawImage(video, 0, 0);
+            const codes = await state.detector.detect(canvas);
+            if (codes.length > 0) {
+              await handleScan(codes[0].rawValue.trim());
+            }
+          } catch (e) {}
         }
-        
-        const t0 = performance.now();
-        
-        try {
-          ctx.drawImage(video, 0, 0);
-          const codes = await state.detector.detect(canvas);
-          
-          if (codes.length > 0) {
-            await handleScan(codes[0].rawValue.trim());
-          }
-        } catch (e) {}
-        
-        // Perf
-        const dt = performance.now() - t0;
-        state.scanTimes.push(dt);
-        if (state.scanTimes.length > 15) state.scanTimes.shift();
-        
-        state.frameCount++;
-        const now = Date.now();
-        if (now - state.lastFpsTime >= 1000) {
-          state.fps = state.frameCount;
-          state.frameCount = 0;
-          state.lastFpsTime = now;
-          const avg = state.scanTimes.reduce((a,b) => a+b, 0) / state.scanTimes.length;
-          $('perf').textContent = `${state.fps} FPS | ${avg.toFixed(1)} ms`;
-        }
-        
-        setTimeout(scan, CONFIG.SCAN_INTERVAL);
+        setTimeout(scan, 80);
       };
       scan();
     }
-    
-    // ============================================
-    // SCAN HANDLER
-    // ============================================
+
     async function handleScan(code) {
       const now = Date.now();
-      
-      // Cooldown
-      if (code === state.lastCode && now - state.lastTime < CONFIG.COOLDOWN) return;
-      
+
+      // Cooldown 2 giây cho cùng mã
+      if (code === state.lastCode && now - state.lastTime < 2000) {
+        return;
+      }
+
       state.lastCode = code;
       state.lastTime = now;
       state.scanning = false;
-      
+
       const time = formatTime();
-      const date = formatDate(new Date());
-      
-      // Check duplicate in today's cache
-      let isDup = false;
-      let dupInfo = null;
-      
-      if (state.todayCache.has(code)) {
-        isDup = true;
-        dupInfo = state.todayCache.get(code);
-        dupInfo.count++;
-        dupInfo.lastTime = time;
-        await updateScan(dupInfo.id, dupInfo);
-        state.stats.dup++;
-        flash(true);
-        playDup();
-      } else {
-        const newScan = {
-          code,
-          date,
-          time,
-          count: 1,
-          position: state.stats.unique + 1
-        };
-        const id = await saveScan(newScan);
-        newScan.id = id;
-        state.todayCache.set(code, newScan);
-        state.stats.unique++;
-        flash(false);
-        playOk();
-        dupInfo = newScan;
-      }
-      
-      state.stats.total++;
-      
-      // UI
-      showResult(code, isDup, dupInfo);
-      updateStats();
-      addToHistory(code, time, dupInfo);
-      
-      setStatus(isDup ? 'dup' : 'ok', isDup ? '⚠️ MÃ TRÙNG!' : '✅ Đã lưu!');
-      
+      const date = state.today;
+      const position = state.stats.unique + 1;
+
+      // Check duplicate trong cache
+      const isDup = state.cache.has(code);
+      const dupInfo = isDup ? state.cache.get(code) : null;
+
+      // Visual & Audio feedback
+      flash(isDup);
+      isDup ? playDuplicate() : playSuccess();
+
+      // Update status
+      setStatus(
+        isDup ? 'dup' : 'ok',
+        isDup ? '⚠️ MÃ TRÙNG!' : '✅ Đã lưu thành công!'
+      );
+
+      // Show result
+      showResult(code, isDup, dupInfo || { time, position, count: 1 });
+
+      // Save to Firebase
+      await saveScan({ code, date, time, position, count: 1 });
+
+      // Resume scanning after 2s
       setTimeout(() => {
         state.scanning = true;
         setStatus('', '📷 Sẵn sàng quét');
-      }, CONFIG.COOLDOWN);
+      }, 2000);
     }
-    
-    // ============================================
-    // UI
-    // ============================================
+
+    // =============================================
+    // UI FUNCTIONS
+    // =============================================
     function setStatus(type, text) {
       $('status').className = 'status ' + type;
       $('status').textContent = text;
     }
-    
+
     function flash(isDup) {
       const el = $('flash');
-      el.className = 'flash on' + (isDup ? ' dup' : '');
-      setTimeout(() => el.className = 'flash', 120);
+      el.className = 'flash ' + (isDup ? 'yellow' : 'green');
+      setTimeout(() => el.className = 'flash', 150);
     }
-    
+
     function showResult(code, isDup, info) {
       const el = $('result');
       el.className = 'result show' + (isDup ? ' dup' : '');
       $('rCode').textContent = code;
       $('rTime').textContent = formatTime();
       $('badge').textContent = isDup ? '⚠️ TRÙNG' : '✅ MỚI';
-      
-      if (isDup) {
-        $('dTime').textContent = info.time;
-        $('dPos').textContent = '#' + info.position;
-        $('dCount').textContent = info.count;
+
+      if (isDup && info) {
+        $('dTime').textContent = info.time || '-';
+        $('dPos').textContent = '#' + (info.position || '-');
+        $('dCount').textContent = (info.count || 1) + 1;
       }
     }
-    
+
     function updateStats() {
+      // Scanner stats
       $('sTotal').textContent = state.stats.total;
       $('sUnique').textContent = state.stats.unique;
       $('sDup').textContent = state.stats.dup;
+
+      // Dashboard stats (theo filter date)
+      const filtered = getFilteredData();
+      let total = 0, unique = 0, dup = 0;
+      filtered.forEach(x => {
+        unique++;
+        total += x.count || 1;
+        dup += (x.count || 1) - 1;
+      });
+      $('dTotal').textContent = total;
+      $('dUnique').textContent = unique;
+      $('dDup').textContent = dup;
     }
-    
-    function addToHistory(code, time, info) {
-      const list = $('history');
-      const empty = list.querySelector('.history-empty');
-      if (empty) empty.remove();
-      
-      let item = list.querySelector(`[data-code="${CSS.escape(code)}"]`);
-      
-      if (item) {
-        const cnt = item.querySelector('.h-count');
-        cnt.textContent = '×' + info.count;
-        cnt.classList.toggle('multi', info.count > 1);
-        list.insertBefore(item, list.firstChild);
-      } else {
-        item = document.createElement('div');
-        item.className = 'h-item';
-        item.dataset.code = code;
-        item.innerHTML = `
-          <div class="h-num">${info.position}</div>
-          <div class="h-content">
-            <div class="h-code">${escapeHtml(code)}</div>
-            <div class="h-time">${time}</div>
-          </div>
-          <div class="h-count">×${info.count}</div>
-        `;
-        list.insertBefore(item, list.firstChild);
-      }
+
+    function getFilteredData() {
+      const date = state.filterDate || state.today;
+      return state.allData.filter(x => x.date === date);
     }
-    
-    async function loadHistory(date) {
-      const scans = await getScansByDate(date);
-      const list = $('history');
-      list.innerHTML = '';
-      
-      if (scans.length === 0) {
-        list.innerHTML = '<div class="history-empty">Không có dữ liệu</div>';
+
+    function renderTable() {
+      const data = getFilteredData();
+      data.sort((a, b) => (a.position || 0) - (b.position || 0));
+
+      const tbody = $('tbody');
+
+      if (data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="empty">Không có dữ liệu</td></tr>';
         return;
       }
-      
-      // Sort by position desc
-      scans.sort((a, b) => b.position - a.position);
-      
-      for (const scan of scans) {
-        const item = document.createElement('div');
-        item.className = 'h-item';
-        item.dataset.code = scan.code;
-        item.innerHTML = `
-          <div class="h-num">${scan.position}</div>
-          <div class="h-content">
-            <div class="h-code">${escapeHtml(scan.code)}</div>
-            <div class="h-time">${scan.time}</div>
-          </div>
-          <div class="h-count ${scan.count > 1 ? 'multi' : ''}">×${scan.count}</div>
-        `;
-        list.appendChild(item);
-      }
+
+      tbody.innerHTML = data.map(item => `
+        <tr>
+          <td>${item.position || '-'}</td>
+          <td>${item.time}</td>
+          <td class="code-cell" title="${escapeHtml(item.code)}">${escapeHtml(item.code)}</td>
+          <td><span class="cnt ${(item.count || 1) > 1 ? 'multi' : ''}">×${item.count || 1}</span></td>
+        </tr>
+      `).join('');
     }
-    
-    async function loadTodayCache() {
-      const scans = await getScansByDate(state.currentDate);
-      state.todayCache.clear();
-      state.stats = { total: 0, unique: 0, dup: 0 };
-      
-      for (const scan of scans) {
-        state.todayCache.set(scan.code, scan);
-        state.stats.unique++;
-        state.stats.total += scan.count;
-        state.stats.dup += scan.count - 1;
+
+    async function exportExcel() {
+      // Load SheetJS if needed
+      if (!window.XLSX) {
+        const script = document.createElement('script');
+        script.src = 'https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js';
+        document.head.appendChild(script);
+        await new Promise(resolve => script.onload = resolve);
       }
-      
-      updateStats();
-      await loadHistory(state.currentDate);
-    }
-    
-    // ============================================
-    // EXPORT EXCEL
-    // ============================================
-    async function exportToExcel(date = null) {
-      let scans;
-      let filename;
-      
-      if (date) {
-        scans = await getScansByDate(date);
-        filename = `TikTok_Scanner_${date}.xlsx`;
-      } else {
-        scans = await getAllScans();
-        filename = `TikTok_Scanner_ALL_${formatDate(new Date())}.xlsx`;
-      }
-      
-      if (scans.length === 0) {
+
+      const data = getFilteredData();
+      if (data.length === 0) {
         alert('Không có dữ liệu để xuất!');
         return;
       }
-      
-      // Group by date
-      const byDate = {};
-      for (const s of scans) {
-        if (!byDate[s.date]) byDate[s.date] = [];
-        byDate[s.date].push(s);
-      }
-      
+
+      data.sort((a, b) => (a.position || 0) - (b.position || 0));
+
+      const rows = data.map(d => ({
+        'STT': d.position,
+        'Giờ quét': d.time,
+        'Mã vạch': d.code,
+        'Số lần': d.count || 1
+      }));
+
+      const ws = XLSX.utils.json_to_sheet(rows);
+      ws['!cols'] = [{ wch: 6 }, { wch: 12 }, { wch: 30 }, { wch: 10 }];
+
       const wb = XLSX.utils.book_new();
-      
-      for (const [d, items] of Object.entries(byDate)) {
-        items.sort((a, b) => a.position - b.position);
-        
-        const data = items.map(s => ({
-          'STT': s.position,
-          'Giờ quét': s.time,
-          'Mã vạch': s.code,
-          'Số lần quét': s.count
-        }));
-        
-        const ws = XLSX.utils.json_to_sheet(data);
-        
-        // Column widths
-        ws['!cols'] = [
-          { wch: 6 },
-          { wch: 12 },
-          { wch: 25 },
-          { wch: 12 }
-        ];
-        
-        XLSX.utils.book_append_sheet(wb, ws, d);
-      }
-      
-      XLSX.writeFile(wb, filename);
+      const sheetName = state.filterDate || state.today;
+      XLSX.utils.book_append_sheet(wb, ws, sheetName);
+      XLSX.writeFile(wb, `TikTok_Scanner_${sheetName}.xlsx`);
     }
-    
-    // ============================================
-    // UTILITIES
-    // ============================================
-    function formatTime() {
-      return new Date().toLocaleTimeString('vi-VN', {
-        hour: '2-digit', minute: '2-digit', second: '2-digit'
+
+    function setMode(mode) {
+      state.mode = mode;
+      document.querySelectorAll('.tab').forEach(t => {
+        t.classList.toggle('active', t.dataset.tab === mode);
       });
-    }
-    
-    function formatDate(d) {
-      return `${String(d.getDate()).padStart(2,'0')}-${String(d.getMonth()+1).padStart(2,'0')}-${d.getFullYear()}`;
-    }
-    
-    function parseDate(str) {
-      const [d, m, y] = str.split('-');
-      return `${y}-${m}-${d}`;
-    }
-    
-    function toDisplayDate(str) {
-      const [y, m, d] = str.split('-');
-      return `${d}-${m}-${y}`;
-    }
-    
-    function escapeHtml(str) {
-      return str.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-    }
-    
-    // ============================================
-    // EVENT HANDLERS
-    // ============================================
-    function setupEvents() {
-      // Date input
-      const dateInput = $('dateInput');
-      dateInput.value = parseDate(state.currentDate);
-      dateInput.max = parseDate(state.currentDate);
-      
-      dateInput.onchange = async () => {
-        const selected = toDisplayDate(dateInput.value);
-        await loadHistory(selected);
-      };
-      
-      // Export
-      $('btnExport').onclick = () => {
-        $('exportDate').value = parseDate(state.currentDate);
-        $('modalExport').classList.add('show');
-      };
-      
-      $('btnCloseExport').onclick = () => $('modalExport').classList.remove('show');
-      
-      $('btnExportDay').onclick = async () => {
-        const date = toDisplayDate($('exportDate').value);
-        await exportToExcel(date);
-        $('modalExport').classList.remove('show');
-      };
-      
-      $('btnExportAll').onclick = async () => {
-        await exportToExcel(null);
-        $('modalExport').classList.remove('show');
-      };
-      
-      // Clear
-      $('btnClear').onclick = () => {
-        $('clearDate').textContent = state.currentDate;
-        $('modalClear').classList.add('show');
-      };
-      
-      $('btnCancelClear').onclick = () => $('modalClear').classList.remove('show');
-      
-      $('btnConfirmClear').onclick = async () => {
-        await clearByDate(state.currentDate);
-        state.todayCache.clear();
-        state.stats = { total: 0, unique: 0, dup: 0 };
+      $('scannerSection').classList.toggle('active', mode === 'scanner');
+      $('dashboardSection').classList.toggle('active', mode === 'dashboard');
+
+      if (mode === 'dashboard') {
+        renderTable();
         updateStats();
-        $('history').innerHTML = '<div class="history-empty">Đã xóa</div>';
-        $('result').className = 'result';
-        $('modalClear').classList.remove('show');
+      }
+    }
+
+    // =============================================
+    // EVENT HANDLERS
+    // =============================================
+    function setupEvents() {
+      // Tab switching
+      document.querySelectorAll('.tab').forEach(tab => {
+        tab.onclick = () => setMode(tab.dataset.tab);
+      });
+
+      // Date filter
+      $('dateFilter').value = toInputDate(state.today);
+      state.filterDate = state.today;
+
+      $('dateFilter').onchange = () => {
+        state.filterDate = fromInputDate($('dateFilter').value);
+        renderTable();
+        updateStats();
       };
-      
-      // Modal backdrop click
-      $('modalExport').onclick = e => {
-        if (e.target === $('modalExport')) $('modalExport').classList.remove('show');
+
+      $('btnToday').onclick = () => {
+        state.filterDate = state.today;
+        $('dateFilter').value = toInputDate(state.today);
+        renderTable();
+        updateStats();
       };
-      $('modalClear').onclick = e => {
-        if (e.target === $('modalClear')) $('modalClear').classList.remove('show');
+
+      // Export
+      $('btnExport').onclick = exportExcel;
+
+      // Clear
+      $('btnClear').onclick = async () => {
+        const date = state.filterDate || state.today;
+        if (confirm(`Xóa toàn bộ dữ liệu ngày ${date}?`)) {
+          await clearByDate(date);
+        }
       };
     }
-    
-    // ============================================
+
+    // =============================================
     // INIT
-    // ============================================
+    // =============================================
     async function init() {
-      setStatus('', '🔄 Đang khởi động...');
+      console.log('🚀 Starting TikTok Scanner with Firebase...');
       
-      await initDB();
-      await loadTodayCache();
-      
+      // Setup events
+      setupEvents();
+
+      // Init Firebase
+      initFirebase();
+
+      // Init Scanner
       const scannerOk = await initScanner();
       if (!scannerOk) return;
-      
+
+      // Init Camera
       const cameraOk = await initCamera();
       if (!cameraOk) return;
-      
-      setupEvents();
+
+      // Start scan loop
       startScanLoop();
-      
       setStatus('', '📷 Sẵn sàng quét');
+
+      console.log('✅ App ready!');
     }
-    
+
+    // Start app
     init();
   </script>
 </body>
