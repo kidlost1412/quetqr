@@ -251,20 +251,55 @@
     .btn-secondary { background: var(--card); color: var(--text); border: 1px solid var(--border); }
     .btn-danger { background: var(--error); color: #fff; }
     .filter {
-      display: flex;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
       gap: 10px;
       margin-bottom: 12px;
     }
+    .filter-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .filter-label {
+      font-size: 0.7rem;
+      color: var(--text2);
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+    .filter select,
     .filter input {
-      flex: 1;
-      padding: 12px;
+      padding: 10px 12px;
       background: var(--card);
       border: 1px solid var(--border);
-      border-radius: 10px;
+      border-radius: 8px;
       color: var(--text);
-      font-size: 0.9rem;
+      font-size: 0.85rem;
+      font-family: inherit;
     }
-    .filter input:focus { outline: none; border-color: var(--primary); }
+    .filter select:focus,
+    .filter input:focus { 
+      outline: none; 
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px rgba(254, 44, 85, 0.1);
+    }
+    .filter select option {
+      background: var(--card);
+      color: var(--text);
+    }
+    .time-range {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+    .time-range input {
+      flex: 1;
+      min-width: 70px;
+    }
+    .time-separator {
+      color: var(--text2);
+      font-size: 0.8rem;
+    }
     
     /* Table */
     .table-wrap {
@@ -298,6 +333,89 @@
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .code-cell:hover {
+      background: rgba(254, 44, 85, 0.1);
+      color: var(--primary);
+    }
+    .code-cell-single {
+      font-family: monospace;
+      max-width: 150px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      cursor: default;
+    }
+    .code-detail-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.8);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    .code-detail-content {
+      background: var(--card);
+      border-radius: 16px;
+      padding: 24px;
+      max-width: 90vw;
+      width: 400px;
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+    .code-detail-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    .code-detail-title {
+      font-size: 1.2rem;
+      font-weight: 700;
+    }
+    .code-detail-close {
+      background: none;
+      border: none;
+      color: var(--text2);
+      font-size: 1.5rem;
+      cursor: pointer;
+      padding: 4px;
+    }
+    .code-detail-code {
+      font-family: monospace;
+      font-size: 1rem;
+      background: rgba(254, 44, 85, 0.1);
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      word-break: break-all;
+    }
+    .scan-history {
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    .scan-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .scan-item:last-child {
+      border-bottom: none;
+    }
+    .scan-time {
+      font-weight: 600;
+    }
+    .scan-position {
+      font-size: 0.85rem;
+      color: var(--text2);
     }
     .cnt {
       display: inline-block;
@@ -428,8 +546,30 @@
     </div>
     
     <div class="filter">
-      <input type="date" id="dateFilter">
-      <button class="btn btn-secondary" id="btnToday">Hôm nay</button>
+      <div class="filter-group">
+        <label class="filter-label">Ngày</label>
+        <select id="dayFilter"></select>
+      </div>
+      <div class="filter-group">
+        <label class="filter-label">Tháng</label>
+        <select id="monthFilter"></select>
+      </div>
+      <div class="filter-group">
+        <label class="filter-label">Năm</label>
+        <select id="yearFilter"></select>
+      </div>
+      <div class="filter-group">
+        <label class="filter-label">Giờ bắt đầu</label>
+        <select id="hourFromFilter"></select>
+      </div>
+      <div class="filter-group">
+        <label class="filter-label">Giờ kết thúc</label>
+        <select id="hourToFilter"></select>
+      </div>
+      <div class="filter-group">
+        <label class="filter-label">Nhanh</label>
+        <button class="btn btn-secondary" id="btnToday">Hôm nay</button>
+      </div>
     </div>
     
     <div class="table-wrap">
@@ -450,6 +590,20 @@
     
     <div class="rt-badge">🔥 FIREBASE REAL-TIME SYNC</div>
   </section>
+
+  <!-- Code Detail Modal -->
+  <div class="code-detail-modal" id="codeDetailModal">
+    <div class="code-detail-content">
+      <div class="code-detail-header">
+        <div class="code-detail-title">Chi tiết mã quét</div>
+        <button class="code-detail-close" id="closeModal">&times;</button>
+      </div>
+      <div class="code-detail-code" id="modalCode">-</div>
+      <div class="scan-history" id="scanHistory">
+        <!-- Scan history will be populated here -->
+      </div>
+    </div>
+  </div>
 
   <!-- Firebase SDK -->
   <script type="module">
@@ -495,6 +649,11 @@
       today: formatDate(new Date()),
       mode: 'scanner',
       filterDate: null,
+      filterDay: null,
+      filterMonth: null,
+      filterYear: null,
+      filterHourFrom: null,
+      filterHourTo: null,
       allData: [],              // Tất cả dữ liệu từ Firebase
       firebaseConnected: false,
       localStorageKey: "tiktok_scanner_data"
@@ -649,7 +808,14 @@
           state.cache.clear();
           state.stats = { total: 0, unique: 0, dup: 0 };
 
+          // Store all scan times for each code
+          const codeScans = new Map();
           state.allData.forEach(item => {
+            if (!codeScans.has(item.code)) {
+              codeScans.set(item.code, []);
+            }
+            codeScans.get(item.code).push(item);
+            
             if (item.date === state.today) {
               state.cache.set(item.code, item);
               state.stats.unique++;
@@ -699,7 +865,14 @@
       state.cache.clear();
       state.stats = { total: 0, unique: 0, dup: 0 };
       
+      // Store all scan times for each code
+      const codeScans = new Map();
       state.allData.forEach(item => {
+        if (!codeScans.has(item.code)) {
+          codeScans.set(item.code, []);
+        }
+        codeScans.get(item.code).push(item);
+        
         if (item.date === state.today) {
           state.cache.set(item.code, item);
           state.stats.unique++;
@@ -972,8 +1145,27 @@
     }
 
     function getFilteredData() {
-      const date = state.filterDate || state.today;
-      return state.allData.filter(x => x.date === date);
+      let filtered = [...state.allData];
+      
+      // Filter by date - mặc định là ngày hôm nay nếu không chọn
+      if (state.filterDay && state.filterMonth && state.filterYear) {
+        const targetDate = `${state.filterDay.padStart(2, '0')}-${state.filterMonth.padStart(2, '0')}-${state.filterYear}`;
+        filtered = filtered.filter(x => x.date === targetDate);
+      } else {
+        // Nếu không chọn, hiển thị ngày hôm nay
+        filtered = filtered.filter(x => x.date === state.today);
+      }
+      
+      // Filter by hour range
+      if (state.filterHourFrom !== null && state.filterHourTo !== null) {
+        filtered = filtered.filter(x => {
+          if (!x.time) return true;
+          const hour = parseInt(x.time.split(':')[0]); // Get hour part
+          return hour >= state.filterHourFrom && hour <= state.filterHourTo;
+        });
+      }
+      
+      return filtered;
     }
 
     function renderTable() {
@@ -987,14 +1179,20 @@
         return;
       }
 
-      tbody.innerHTML = data.map(item => `
+      tbody.innerHTML = data.map(item => {
+        const totalScans = state.allData.filter(x => x.code === item.code).reduce((sum, scan) => sum + (scan.count || 1), 0);
+        const clickable = totalScans > 1 ? `onclick="showCodeDetail('${escapeHtml(item.code)}')">` : '>';
+        const cellClass = totalScans > 1 ? 'code-cell' : 'code-cell-single';
+        
+        return `
         <tr>
           <td>${item.position || '-'}</td>
           <td>${item.time}</td>
-          <td class="code-cell" title="${escapeHtml(item.code)}">${escapeHtml(item.code)}</td>
+          <td class="${cellClass}" title="${escapeHtml(item.code)}" ${clickable}${escapeHtml(item.code)}</td>
           <td><span class="cnt ${(item.count || 1) > 1 ? 'multi' : ''}">×${item.count || 1}</span></td>
         </tr>
-      `).join('');
+        `;
+      }).join('');
     }
 
     async function exportExcel() {
@@ -1030,6 +1228,105 @@
       XLSX.writeFile(wb, `TikTok_Scanner_${sheetName}.xlsx`);
     }
 
+    function showCodeDetail(code) {
+      // Chỉ hiển thị modal nếu mã được quét nhiều lần
+      const allScans = state.allData.filter(x => x.code === code);
+      const totalScans = allScans.reduce((sum, scan) => sum + (scan.count || 1), 0);
+      
+      if (totalScans <= 1) {
+        // Nếu chỉ quét 1 lần thì không hiển thị modal
+        return;
+      }
+
+      $('modalCode').textContent = code;
+      
+      // Tạo danh sách tất cả lần quét
+      let scanTimes = [];
+      allScans.forEach(scan => {
+        for (let i = 0; i < (scan.count || 1); i++) {
+          scanTimes.push({
+            time: scan.time,
+            date: scan.date,
+            position: scan.position,
+            scanNumber: scanTimes.length + 1
+          });
+        }
+      });
+      
+      const historyHtml = scanTimes.map(scan => `
+        <div class="scan-item">
+          <div>
+            <div class="scan-time">Lần ${scan.scanNumber}: ${scan.time}</div>
+            <div class="scan-position">Vị trí #${scan.position} - ${scan.date}</div>
+          </div>
+        </div>
+      `).join('');
+      
+      $('scanHistory').innerHTML = historyHtml;
+      $('codeDetailModal').style.display = 'flex';
+    }
+
+    // Make showCodeDetail globally available
+    window.showCodeDetail = showCodeDetail;
+
+    function hideCodeDetail() {
+      $('codeDetailModal').style.display = 'none';
+    }
+
+    function initDateFilters() {
+      const today = new Date();
+      const currentDay = today.getDate();
+      const currentMonth = today.getMonth() + 1;
+      const currentYear = today.getFullYear();
+      
+      // Populate day options
+      const dayFilter = $('dayFilter');
+      dayFilter.innerHTML = '<option value="">Tất cả</option>';
+      for (let i = 1; i <= 31; i++) {
+        const selected = i === currentDay ? 'selected' : '';
+        dayFilter.innerHTML += `<option value="${i}" ${selected}>${i}</option>`;
+      }
+      
+      // Populate month options
+      const monthFilter = $('monthFilter');
+      const monthNames = ['Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5', 'Tháng 6',
+                         'Tháng 7', 'Tháng 8', 'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12'];
+      monthFilter.innerHTML = '<option value="">Tất cả</option>';
+      for (let i = 1; i <= 12; i++) {
+        const selected = i === currentMonth ? 'selected' : '';
+        monthFilter.innerHTML += `<option value="${i}" ${selected}>${monthNames[i-1]}</option>`;
+      }
+      
+      // Populate year options
+      const yearFilter = $('yearFilter');
+      yearFilter.innerHTML = '<option value="">Tất cả</option>';
+      for (let i = currentYear; i >= currentYear - 5; i--) {
+        const selected = i === currentYear ? 'selected' : '';
+        yearFilter.innerHTML += `<option value="${i}" ${selected}>${i}</option>`;
+      }
+      
+      // Populate hour options
+      const hourFromFilter = $('hourFromFilter');
+      const hourToFilter = $('hourToFilter');
+      
+      hourFromFilter.innerHTML = '<option value="">Tất cả</option>';
+      hourToFilter.innerHTML = '<option value="">Tất cả</option>';
+      
+      for (let i = 0; i <= 23; i++) {
+        const hourStr = i.toString().padStart(2, '0');
+        const displayHour = i < 12 ? `${i === 0 ? 12 : i}:00 AM` : `${i === 12 ? 12 : i - 12}:00 PM`;
+        hourFromFilter.innerHTML += `<option value="${i}">${displayHour}</option>`;
+        hourToFilter.innerHTML += `<option value="${i}">${displayHour}</option>`;
+      }
+      
+      // Set initial filter state to today
+      state.filterDay = currentDay.toString();
+      state.filterMonth = currentMonth.toString();
+      state.filterYear = currentYear.toString();
+      state.filterHourFrom = null;
+      state.filterHourTo = null;
+    }
+
     function setMode(mode) {
       state.mode = mode;
       document.querySelectorAll('.tab').forEach(t => {
@@ -1053,21 +1350,67 @@
         tab.onclick = () => setMode(tab.dataset.tab);
       });
 
-      // Date filter
-      $('dateFilter').value = toInputDate(state.today);
-      state.filterDate = state.today;
+      // Initialize date filters
+      initDateFilters();
 
-      $('dateFilter').onchange = () => {
-        state.filterDate = fromInputDate($('dateFilter').value);
+      // Date filter events
+      $('dayFilter').onchange = () => {
+        state.filterDay = $('dayFilter').value;
+        renderTable();
+        updateStats();
+      };
+      
+      $('monthFilter').onchange = () => {
+        state.filterMonth = $('monthFilter').value;
+        renderTable();
+        updateStats();
+      };
+      
+      $('yearFilter').onchange = () => {
+        state.filterYear = $('yearFilter').value;
+        renderTable();
+        updateStats();
+      };
+      
+      // Hour filter events
+      $('hourFromFilter').onchange = () => {
+        state.filterHourFrom = $('hourFromFilter').value ? parseInt($('hourFromFilter').value) : null;
+        renderTable();
+        updateStats();
+      };
+      
+      $('hourToFilter').onchange = () => {
+        state.filterHourTo = $('hourToFilter').value ? parseInt($('hourToFilter').value) : null;
         renderTable();
         updateStats();
       };
 
       $('btnToday').onclick = () => {
-        state.filterDate = state.today;
-        $('dateFilter').value = toInputDate(state.today);
+        const today = new Date();
+        const currentDay = today.getDate();
+        const currentMonth = today.getMonth() + 1;
+        const currentYear = today.getFullYear();
+        
+        $('dayFilter').value = currentDay;
+        $('monthFilter').value = currentMonth;
+        $('yearFilter').value = currentYear;
+        $('hourFromFilter').value = '';
+        $('hourToFilter').value = '';
+        
+        state.filterDay = currentDay.toString();
+        state.filterMonth = currentMonth.toString();
+        state.filterYear = currentYear.toString();
+        state.filterHourFrom = null;
+        state.filterHourTo = null;
+        
         renderTable();
         updateStats();
+      };
+
+      // Modal events
+      $('closeModal').onclick = hideCodeDetail;
+      $('codeDetailModal').onclick = (e) => {
+        if (e.target === $('codeDetailModal')) hideCodeDetail();
       };
 
       // Export
@@ -1075,7 +1418,12 @@
 
       // Clear
       $('btnClear').onclick = async () => {
-        const date = state.filterDate || state.today;
+        let date;
+        if (state.filterDay && state.filterMonth && state.filterYear) {
+          date = `${state.filterDay.padStart(2, '0')}-${state.filterMonth.padStart(2, '0')}-${state.filterYear}`;
+        } else {
+          date = state.today;
+        }
         if (confirm(`Xóa toàn bộ dữ liệu ngày ${date}?`)) {
           await clearByDate(date);
         }
